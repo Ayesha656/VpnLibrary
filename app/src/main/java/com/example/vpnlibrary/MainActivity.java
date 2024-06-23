@@ -15,6 +15,9 @@ import com.example.mylibrary.ImageFilterCallback;
 import com.example.mylibrary.ImageFilterResultCallback;
 import com.example.mylibrary.LocalVpnManager;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +37,11 @@ public class MainActivity extends AppCompatActivity {
             public void onImageUrlIntercepted(String imageUrl, ImageFilterResultCallback resultCallback) {
                 validateImageUrl(imageUrl, resultCallback);
             }
+
+            @Override
+            public boolean onImageRequest(String imageUrl) {
+                return true;
+            }
         });
     }
 
@@ -44,11 +52,15 @@ public class MainActivity extends AppCompatActivity {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        // Parse the response from the backend server
-                        // Assuming the server responds with JSON: {"allowed": true, "newUrl": "https://..."}
-                        boolean allowed = true; // Parse from response
-                        String newUrl = imageUrl; // Parse from response if provided
-                        resultCallback.onResult(allowed, newUrl);
+                        try {
+                            JSONObject jsonResponse = new JSONObject(response);
+                            boolean allowed = jsonResponse.getBoolean("allowed");
+                            String newUrl = jsonResponse.optString("newUrl", imageUrl);
+                            resultCallback.onResult(allowed, newUrl);
+                        } catch (JSONException e) {
+                            Log.e("MainActivity", "JSON parsing error", e);
+                            resultCallback.onResult(false, null);
+                        }
                     }
                 },
                 new Response.ErrorListener() {

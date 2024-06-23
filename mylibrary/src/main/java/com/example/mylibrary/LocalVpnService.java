@@ -2,6 +2,7 @@ package com.example.mylibrary;
 
 import android.content.Intent;
 import android.net.VpnService;
+import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
@@ -11,37 +12,39 @@ import java.util.List;
 public class LocalVpnService extends VpnService {
     private static final String TAG = "LocalVpnService";
     private ParcelFileDescriptor vpnInterface;
-    private ImageFilterCallback imageFilterCallback;
+    private static ImageFilterCallback imageFilterCallback;
     private List<String> imageExtensions;
     private List<String> packageNames;
 
-    public void setImageFilterCallback(ImageFilterCallback callback) {
-        this.imageFilterCallback = callback;
-    }
-
-    public void setImageExtensions(List<String> imageExtensions) {
-        this.imageExtensions = imageExtensions;
-    }
-
-    public void setPackageNames(List<String> packageNames) {
-        this.packageNames = packageNames;
+    public static void setImageFilterCallback(ImageFilterCallback callback) {
+        imageFilterCallback = callback;
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // VPN establishment logic here
-        // Intercept and filter traffic in a new thread
+        imageExtensions = intent.getStringArrayListExtra("imageExtensions");
+        packageNames = intent.getStringArrayListExtra("packageNames");
+
+        try {
+            vpnInterface = establishVpn();
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to establish VPN", e);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         new Thread(new Runnable() {
             @Override
             public void run() {
                 interceptAndFilterTraffic();
             }
         }).start();
+
         return START_STICKY;
     }
 
     private void interceptAndFilterTraffic() {
-        // Intercept and filter logic here
+        // Implement traffic interception and filtering logic here
         // Use imageFilterCallback to handle intercepted URLs
     }
 
@@ -62,5 +65,10 @@ public class LocalVpnService extends VpnService {
         builder.addAddress("10.0.0.2", 24);
         builder.addRoute("0.0.0.0", 0);
         return builder.setSession("LocalVpnService").establish();
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
 }
